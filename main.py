@@ -5,12 +5,10 @@ import torch
 from PIL import Image, ImageDraw
 import hashlib
 
-# Initialize the processor and model for object detection
 processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50", revision="no_timm")
 model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50", revision="no_timm")
 
 def run_object_detection(image):
-    # Process the image and generate model inputs
     inputs = processor(images=image, return_tensors="pt")
     outputs = model(**inputs)
 
@@ -23,16 +21,15 @@ def run_object_detection(image):
     draw = ImageDraw.Draw(draw_image, 'RGBA')
     class_colors = {}
 
-    # Functions to generate a color and create a semi-transparent version of the color
     def color_from_label(label):
         hash_object = hashlib.md5(label.encode())
         hash_digest = hash_object.hexdigest()
         return tuple(int(hash_digest[i:i+2], 16) for i in (0, 2, 4))  # RGB
 
-    def transparent_color(color, alpha=20):  # alpha: 0 (transparent) to 255 (opaque)
+    def transparent_color(color, alpha=20):
         return color + (alpha,)
 
-    # Draw bounding boxes and labels on the image
+    # Draw bounding boxes on the image
     for score, label, box in zip(results["scores"], results["labels"], results["boxes"]):
         box = [round(i, 2) for i in box.tolist()]
         label_name = model.config.id2label[label.item()]
@@ -53,7 +50,7 @@ def run_object_detection(image):
     return draw_image
 
 def capture_and_process_images(interval, save_path):
-    cap = cv2.VideoCapture(0)  # 0 is usually the default camera
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Error: Camera not accessible")
@@ -70,17 +67,14 @@ def capture_and_process_images(interval, save_path):
                 # Run object detection on the in-memory image
                 processed_image = run_object_detection(pil_image)
 
-                # Save the processed image
                 timestamp = int(time.time())
                 output_image_path = f"{save_path}/IMG_{timestamp}.jpg"
                 processed_image.save(output_image_path)
                 print(f"Processed image saved as {output_image_path}")
 
-                # Check for 'q' key to quit
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 
-                # Wait for 'interval' seconds
                 time.sleep(interval)
             else:
                 print("Error: Cannot read frame")
@@ -91,5 +85,4 @@ def capture_and_process_images(interval, save_path):
         cap.release()
         cv2.destroyAllWindows()
 
-# Capture an image every 5 seconds and process it
 capture_and_process_images(5, "./output")
